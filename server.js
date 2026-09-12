@@ -1,6 +1,7 @@
 const express = require('express');
 const http = require('http');
 const next = require('next');
+const path = require('path');
 const { Server } = require('socket.io');
 
 const dev = process.env.NODE_ENV !== 'production';
@@ -46,6 +47,11 @@ app.prepare().then(() => {
   // Body parsing middleware for API requests
   server.use(express.json());
   server.use(express.urlencoded({ extended: true }));
+
+  // Serve the standalone chatbot page without modifying its source file.
+  server.get('/krishi_mandi_mitra.html', (req, res) => {
+    res.sendFile(path.join(__dirname, 'krishi_mandi_mitra.html'));
+  });
 
   // Mount modular Express REST API layer
   const apiRoutes = require('./server/routes');

@@ -98,6 +98,9 @@ npm run prisma:push
 
 # Seed realistic demo farmers, staff, and procurement centers
 npm run prisma:seed
+
+# Import the supplied queue/ETA CSV into QueueObservation records
+npm run prisma:import-csv
 ```
 
 ### 5. Start the Application Server
@@ -109,6 +112,14 @@ The application will start at: **`http://localhost:3000`**
 - **Farmer Portal / Login**: [http://localhost:3000/login](http://localhost:3000/login)
 - **Farmer Dashboard**: [http://localhost:3000/farmer/dashboard](http://localhost:3000/farmer/dashboard)
 - **Staff Operations Dashboard**: [http://localhost:3000/staff/dashboard](http://localhost:3000/staff/dashboard)
+
+### Portal Login
+
+- **Portal chooser**: [http://localhost:3000/login](http://localhost:3000/login)
+- **Farmer login/signup**: [http://localhost:3000/farmer/login](http://localhost:3000/farmer/login)
+- **Vendor login/signup**: [http://localhost:3000/vendor/login](http://localhost:3000/vendor/login)
+
+Farmer and vendor accounts are saved in the Prisma `User` table. Passwords are stored as salted hashes. The CSV import stores the queue observations from `sih backend 26/ml/dataset/sih_queue_wait_time_dataset_2000.csv` in the Prisma `QueueObservation` table.
 
 ---
 

@@ -99,6 +99,7 @@ async function getAllCenters(filters = {}) {
       rawStatus: center.status,
       openingTime: center.openingTime,
       closingTime: center.closingTime,
+      slots: center.slots,
       distanceKm,
       currentQueue,
       currentQueueCount: currentQueue,

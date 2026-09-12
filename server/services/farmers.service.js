@@ -106,8 +106,20 @@ async function updateFarmer(id, updateData) {
   return updated;
 }
 
+async function deleteFarmer(id) {
+  const farmer = await prisma.user.findUnique({ where: { id } });
+  if (!farmer || farmer.role !== 'FARMER') {
+    const error = new Error('Farmer account not found.');
+    error.statusCode = 404;
+    throw error;
+  }
+
+  await prisma.user.delete({ where: { id } });
+}
+
 module.exports = {
   createFarmerProfile,
   getFarmerById,
   updateFarmer,
+  deleteFarmer,
 };

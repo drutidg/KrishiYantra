@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import {
   CheckCircle2,
   Calendar,
@@ -32,6 +32,7 @@ export default function BookingConfirmationPage({
   params: { bookingId: string };
 }) {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { t } = useLanguage();
   const [booking, setBooking] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -94,6 +95,12 @@ export default function BookingConfirmationPage({
     };
   }, [fetchBooking, params.bookingId]);
 
+  useEffect(() => {
+    if (searchParams.get('autoRedirect') !== '1' || !booking || booking.status === 'CANCELLED') return;
+    const timer = setTimeout(() => router.push('/farmer/dashboard'), 6000);
+    return () => clearTimeout(timer);
+  }, [booking, router, searchParams]);
+
   // Handle Cancellation
   const handleConfirmCancel = async () => {
     try {
@@ -101,7 +108,7 @@ export default function BookingConfirmationPage({
       setCancelError(null);
 
       const storedUser = getStoredUser();
-      const farmerId = storedUser?.id || null;
+      const farmerId = booking?.farmerId || booking?.user?.id || booking?.user?.phone || storedUser?.id || storedUser?.phone || null;
 
       const targetId = booking?.id || params.bookingId;
       const res = await fetch(`/api/bookings/${targetId}/cancel`, {

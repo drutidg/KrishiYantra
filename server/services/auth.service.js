@@ -3,13 +3,177 @@ const prisma = require('../prisma');
 
 const DEMO_FARMER_PHONE = '9876543210';
 const DEMO_STAFF_PHONE = '9876543211';
+const DEMO_VENDOR_PHONE = '9876543212';
+
+function sanitizeUser(user) {
+  const { aadhaarHash, passwordHash, ...safeUser } = user;
+  return safeUser;
+}
+
+function hashPassword(password) {
+  const salt = crypto.randomBytes(16).toString('hex');
+  const hash = crypto.scryptSync(password, salt, 64).toString('hex');
+  return `${salt}:${hash}`;
+}
+
+function verifyPassword(password, storedHash) {
+  const [salt, hash] = String(storedHash || '').split(':');
+  if (!salt || !hash) return false;
+  const derived = crypto.scryptSync(password, salt, 64);
+  const expected = Buffer.from(hash, 'hex');
+  return expected.length === derived.length && crypto.timingSafeEqual(derived, expected);
+}
+
+function validateCredentials(phone, password) {
+  const cleanedPhone = String(phone || '').replace(/\D/g, '').slice(-10);
+  if (cleanedPhone.length !== 10) {
+    const err = new Error('Please enter a valid 10-digit mobile number.');
+    err.statusCode = 400;
+    throw err;
+  }
+  if (typeof password !== 'string' || password.length < 6) {
+    const err = new Error('Password must contain at least 6 characters.');
+    err.statusCode = 400;
+    throw err;
+  }
+  return cleanedPhone;
+}
+
+async function createCustomerId() {
+  for (let attempt = 0; attempt < 20; attempt += 1) {
+    const customerId = `FARM${Math.floor(100000 + Math.random() * 900000)}`;
+    const existing = await prisma.user.findUnique({ where: { customerId } });
+    if (!existing) return customerId;
+  }
+  const error = new Error('Unable to allocate a customer ID. Please try again.');
+  error.statusCode = 500;
+  throw error;
+}
+
+async function signup({ name, phone, aadhaar, password, role = 'FARMER', village, cropType, email }) {
+  const normalizedRole = String(role).toUpperCase() === 'VENDOR' ? 'VENDOR' : 'FARMER';
+  let cleanedPhone = phone;
+  let aadhaarHash = null;
+  let aadhaarLast4 = null;
+
+  if (normalizedRole === 'FARMER') {
+    cleanedPhone = String(phone || '').replace(/\D/g, '').slice(-10);
+    if (cleanedPhone.length !== 10) {
+      const error = new Error('Please enter a valid 10-digit mobile number.');
+      error.statusCode = 400;
+      throw error;
+    }
+    const cleanedAadhaar = String(aadhaar || '').replace(/\D/g, '');
+    if (cleanedAadhaar.length !== 12) {
+      const error = new Error('Please enter a valid 12-digit Aadhaar number.');
+      error.statusCode = 400;
+      throw error;
+    }
+    if (typeof password !== 'string' || password.length < 6) {
+      const error = new Error('Password must contain at least 6 characters.');
+      error.statusCode = 400;
+      throw error;
+    }
+    aadhaarHash = crypto.createHash('sha256').update(cleanedAadhaar).digest('hex');
+    aadhaarLast4 = cleanedAadhaar.slice(-4);
+    const existingAadhaar = await prisma.user.findFirst({ where: { aadhaarHash } });
+    if (existingAadhaar) {
+      const error = new Error('An account with this Aadhaar number already exists.');
+      error.statusCode = 409;
+      throw error;
+    }
+  } else {
+    cleanedPhone = validateCredentials(phone, password);
+  }
+
+  const existing = await prisma.user.findUnique({ where: { phone: cleanedPhone } });
+  if (existing) {
+    const err = new Error('An account with these credentials already exists.');
+    err.statusCode = 409;
+    throw err;
+  }
+
+  const safeName = String(name || '').trim();
+  if (safeName.length < 2) {
+    const err = new Error('Please enter your full name.');
+    err.statusCode = 400;
+    throw err;
+  }
+
+  const safeVillage = String(village || 'Shivapur').trim();
+  const customerId = normalizedRole === 'FARMER' ? await createCustomerId() : null;
+  const user = await prisma.user.create({
+    data: {
+      name: safeName,
+      phone: cleanedPhone,
+      phoneNumber: cleanedPhone,
+      customerId,
+      aadhaarHash,
+      aadhaarLast4,
+      aadhaarVerified: normalizedRole === 'FARMER',
+      email: email ? String(email).trim() : null,
+      village: safeVillage,
+      district: 'Mandya',
+      state: 'Karnataka',
+      role: normalizedRole,
+      passwordHash: hashPassword(password),
+      mobileVerified: true,
+      verificationStatus: 'VERIFIED',
+      ...(normalizedRole === 'FARMER'
+        ? { farmerProfile: { create: { village: safeVillage, cropType: cropType || 'Paddy / Rice' } } }
+        : {}),
+    },
+    include: { farmerProfile: true },
+  });
+  return sanitizeUser(user);
+}
+
+async function loginWithPassword({ phone, password, role }) {
+  const cleanedPhone = validateCredentials(phone, password);
+  const expectedRole = String(role || 'FARMER').toUpperCase() === 'VENDOR' ? 'VENDOR' : 'FARMER';
+  const user = await prisma.user.findUnique({ where: { phone: cleanedPhone }, include: { farmerProfile: true } });
+  if (!user || user.role !== expectedRole || !verifyPassword(password, user.passwordHash)) {
+    const err = new Error('Mobile number, password, or portal selection is incorrect.');
+    err.statusCode = 401;
+    throw err;
+  }
+  return sanitizeUser(user);
+}
+
+async function loginWithAadhaarPassword({ aadhaar, password }) {
+  const cleanedAadhaar = String(aadhaar || '').replace(/\D/g, '');
+  if (cleanedAadhaar.length !== 12) {
+    const error = new Error('Please enter a valid 12-digit Aadhaar number.');
+    error.statusCode = 400;
+    throw error;
+  }
+  if (typeof password !== 'string' || password.length < 6) {
+    const error = new Error('Password must contain at least 6 characters.');
+    error.statusCode = 400;
+    throw error;
+  }
+  const aadhaarHash = crypto.createHash('sha256').update(cleanedAadhaar).digest('hex');
+  const user = await prisma.user.findFirst({ where: { aadhaarHash }, include: { farmerProfile: true } });
+  if (!user) {
+    const error = new Error('No farmer account exists for this Aadhaar number. Please sign up before attempting to log in.');
+    error.statusCode = 404;
+    throw error;
+  }
+  if (user.role !== 'FARMER' || !verifyPassword(password, user.passwordHash)) {
+    const error = new Error('Aadhaar number or password is incorrect.');
+    error.statusCode = 401;
+    throw error;
+  }
+  return sanitizeUser(user);
+}
 
 /**
  * Perform one-click demo login for FARMER or STAFF
  */
 async function demoLogin(role = 'FARMER') {
-  const normalizedRole = role.toUpperCase() === 'STAFF' ? 'STAFF' : 'FARMER';
-  const targetPhone = normalizedRole === 'STAFF' ? DEMO_STAFF_PHONE : DEMO_FARMER_PHONE;
+  const requestedRole = String(role).toUpperCase();
+  const normalizedRole = requestedRole === 'STAFF' ? 'STAFF' : requestedRole === 'VENDOR' ? 'VENDOR' : 'FARMER';
+  const targetPhone = normalizedRole === 'STAFF' ? DEMO_STAFF_PHONE : normalizedRole === 'VENDOR' ? DEMO_VENDOR_PHONE : DEMO_FARMER_PHONE;
 
   let user = await prisma.user.findUnique({
     where: { phone: targetPhone },
@@ -17,17 +181,17 @@ async function demoLogin(role = 'FARMER') {
   });
 
   if (!user) {
-    if (normalizedRole === 'STAFF') {
+    if (normalizedRole === 'STAFF' || normalizedRole === 'VENDOR') {
       user = await prisma.user.create({
         data: {
-          name: 'Shivapur Center Operator',
-          phone: DEMO_STAFF_PHONE,
-          phoneNumber: DEMO_STAFF_PHONE,
-          email: 'operator.shivapur@krishiyantra.gov.in',
+          name: normalizedRole === 'VENDOR' ? 'Demo Procurement Vendor' : 'Shivapur Center Operator',
+          phone: targetPhone,
+          phoneNumber: targetPhone,
+          email: normalizedRole === 'VENDOR' ? 'vendor.shivapur@krishiyantra.gov.in' : 'operator.shivapur@krishiyantra.gov.in',
           village: 'Shivapur',
           district: 'Mandya',
           state: 'Karnataka',
-          role: 'STAFF',
+          role: normalizedRole,
           aadhaarLast4: '9876',
           aadhaarVerified: true,
           mobileVerified: true,
@@ -78,8 +242,7 @@ async function demoLogin(role = 'FARMER') {
   }
 
   // Strip sensitive aadhaarHash before returning
-  const { aadhaarHash, ...sanitizedUser } = user;
-  return sanitizedUser;
+  return sanitizeUser(user);
 }
 
 /**
@@ -224,8 +387,7 @@ async function verifyOtp(phone, otp, aadhaarLast4 = '1234', role = 'FARMER', nam
 
   // Find or create farmer user
   const user = await findOrCreateUser(cleanedPhone, role, name, aadhaarLast4);
-  const { aadhaarHash, ...sanitizedUser } = user;
-  return sanitizedUser;
+  return sanitizeUser(user);
 }
 
 /**
@@ -240,15 +402,15 @@ async function loginByPhone(phone, role = 'FARMER', name = null) {
   }
 
   const user = await findOrCreateUser(cleanedPhone, role, name);
-  const { aadhaarHash, ...sanitizedUser } = user;
-  return sanitizedUser;
+  return sanitizeUser(user);
 }
 
 /**
  * Find existing user or create a new user profile
  */
 async function findOrCreateUser(phone, role = 'FARMER', name = null, aadhaarLast4 = '1234') {
-  const normalizedRole = (role || 'FARMER').toUpperCase() === 'STAFF' ? 'STAFF' : 'FARMER';
+  const requestedRole = (role || 'FARMER').toUpperCase();
+  const normalizedRole = requestedRole === 'STAFF' ? 'STAFF' : requestedRole === 'VENDOR' ? 'VENDOR' : 'FARMER';
 
   let user = await prisma.user.findUnique({
     where: { phone },
@@ -348,8 +510,7 @@ async function loginByAadhaar(aadhaar, consent) {
     });
   }
 
-  const { aadhaarHash: _h, ...sanitizedUser } = user;
-  return sanitizedUser;
+  return sanitizeUser(user);
 }
 
 module.exports = {
@@ -359,7 +520,11 @@ module.exports = {
   verifyOtp,
   loginByPhone,
   findOrCreateUser,
+  signup,
+  loginWithPassword,
+  loginWithAadhaarPassword,
   DEMO_FARMER_PHONE,
   DEMO_STAFF_PHONE,
+  DEMO_VENDOR_PHONE,
 };
 

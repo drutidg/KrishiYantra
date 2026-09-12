@@ -88,9 +88,24 @@
     cursor:pointer;
     white-space:nowrap;
   }
-  #langBtn:hover{ background:rgba(255,255,255,0.22); }
-  #langBtn:focus-visible, .chip:focus-visible, .send-btn:focus-visible, #textInput:focus-visible {
+  #langBtn:hover, #portalBtn:hover{ background:rgba(255,255,255,0.22); }
+  #langBtn:focus-visible, #portalBtn:focus-visible, .chip:focus-visible, .send-btn:focus-visible, #textInput:focus-visible {
     outline:3px solid var(--gold-soft); outline-offset:2px;
+  }
+  #portalBtn{
+    display:inline-flex;
+    align-items:center;
+    gap:5px;
+    font-family:'Manrope',sans-serif;
+    font-weight:700;
+    font-size:12.5px;
+    background:rgba(255,255,255,0.12);
+    border:1px solid rgba(255,255,255,0.35);
+    color:#fff;
+    padding:7px 12px;
+    border-radius:999px;
+    text-decoration:none;
+    white-space:nowrap;
   }
   /* Ticker */
   .ticker-wrap{
@@ -266,7 +281,10 @@
           <p id="appTagline">Your Mandi, Your Information, Your Time</p>
         </div>
       </div>
-      <button id="langBtn" type="button">हिंदी</button>
+      <div style="display:flex;align-items:center;gap:6px;">
+        <a id="portalBtn" href="/login" aria-label="Back to login page">← Login</a>
+        <button id="langBtn" type="button">हिंदी</button>
+      </div>
     </div>
     <div class="ticker-wrap">
       <div class="ticker-track">

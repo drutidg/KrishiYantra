@@ -12,11 +12,13 @@ model User {
   name           String
   phone          String          @unique
   phoneNumber    String?
+  customerId     String?         @unique
   email          String?
   village        String?
   district       String?         @default("Mandya")
   state          String?         @default("Karnataka")
-  role               String          @default("FARMER") // FARMER, STAFF, ADMIN
+  role               String          @default("FARMER") // FARMER, VENDOR, STAFF, ADMIN
+  passwordHash       String?
   aadhaarHash        String?
   aadhaarLast4       String?         @default("1234")
   aadhaarVerified    Boolean         @default(false)
@@ -183,5 +185,30 @@ model OtpVerification {
   expiresAt    DateTime
   verified     Boolean  @default(false)
   createdAt    DateTime @default(now())
+}
+
+model QueueObservation {
+  id                    String   @id @default(cuid())
+  customerId            String   @unique
+  customerName          String
+  centreId              String
+  centreName            String
+  bookingDate           String
+  hourOfDay             Int
+  dayOfWeek             Int
+  peakHour              Int
+  tokenNumber           Int
+  tokensAhead           Int
+  queueLength           Int
+  activeCounters        Int
+  crop                  String
+  quantityKg            Float
+  qualityGrade          String
+  staffExperienceYears  Int
+  estimatedTimeMin      Float
+  actualWaitTimeMin     Float
+  processingTimeMin     Float
+  totalTimeAtCentreMin  Float
+  createdAt             DateTime @default(now())
 }
 

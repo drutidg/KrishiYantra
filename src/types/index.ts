@@ -1,4 +1,4 @@
-export type Role = 'FARMER' | 'STAFF' | 'ADMIN';
+export type Role = 'FARMER' | 'VENDOR' | 'STAFF' | 'ADMIN';
 
 export type CenterStatus = 'OPEN' | 'BUSY' | 'PAUSED' | 'CLOSED';
 
@@ -17,6 +17,7 @@ export interface User {
   id: string;
   name: string;
   phone: string;
+  customerId?: string;
   role: Role;
   createdAt: string;
   farmerProfile?: FarmerProfile;

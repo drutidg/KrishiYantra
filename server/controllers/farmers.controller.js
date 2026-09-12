@@ -33,8 +33,18 @@ async function updateFarmer(req, res, next) {
   }
 }
 
+async function deleteFarmer(req, res, next) {
+  try {
+    await farmersService.deleteFarmer(req.params.id);
+    return successResponse(res, null, 'Farmer account deleted successfully');
+  } catch (err) {
+    next(err);
+  }
+}
+
 module.exports = {
   createFarmer,
   getFarmerById,
   updateFarmer,
+  deleteFarmer,
 };

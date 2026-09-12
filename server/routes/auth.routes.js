@@ -11,6 +11,8 @@ router.post('/verify-aadhaar', authController.aadhaarLogin);
 
 // Login by phone / credentials
 router.post('/login', authController.login);
+router.post('/signup', authController.signup);
+router.post('/password-login', authController.passwordLogin);
 
 // Send OTP
 router.post('/otp', authController.sendOtp);

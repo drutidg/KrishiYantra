@@ -22,6 +22,7 @@ import {
   ShieldCheck,
   CreditCard,
   Info,
+  Trash2,
 } from 'lucide-react';
 import { useLanguage } from '@/lib/language-context';
 import { LanguageSelector } from '@/components/common/LanguageSelector';
@@ -38,6 +39,8 @@ export default function FarmerProfilePage() {
   const [reportCategory, setReportCategory] = useState('Booking problem');
 
   const [bookings, setBookings] = useState<any[]>([]);
+  const [deletingAccount, setDeletingAccount] = useState(false);
+  const [accountDeleted, setAccountDeleted] = useState(false);
 
   useEffect(() => {
     async function loadBookings(farmerId: string) {
@@ -76,6 +79,27 @@ export default function FarmerProfilePage() {
     router.push('/login');
   };
 
+  const handleDeleteAccount = async () => {
+    if (!user?.id || !window.confirm('Delete your farmer account permanently? This action cannot be undone.')) return;
+
+    setDeletingAccount(true);
+    try {
+      const response = await fetch(`/api/farmers/${user.id}`, { method: 'DELETE' });
+      const data = await response.json();
+      if (!response.ok || !data.success) {
+        setSavedMessage(data.message || 'Unable to delete your account.');
+        return;
+      }
+      clearStoredUser();
+      setAccountDeleted(true);
+      setTimeout(() => router.push('/login'), 3000);
+    } catch {
+      setSavedMessage('Unable to delete your account. Please try again.');
+    } finally {
+      setDeletingAccount(false);
+    }
+  };
+
   const handleActionToast = (msg: string) => {
     setSavedMessage(msg);
     setTimeout(() => setSavedMessage(null), 3000);
@@ -98,6 +122,13 @@ export default function FarmerProfilePage() {
         </div>
       )}
 
+      {accountDeleted && (
+        <div className="p-3 bg-emerald-100 border border-emerald-300 text-emerald-900 text-xs font-bold rounded-xl flex items-center gap-2">
+          <Check className="w-4 h-4 text-emerald-800" />
+          <span>Account Deleted Successfully</span>
+        </div>
+      )}
+
       {/* 1. Profile Header Card */}
       <div className="bg-white rounded-3xl p-5 border border-gray-200 shadow-sm text-center">
         <div className="w-16 h-16 rounded-full bg-emerald-800 text-white flex items-center justify-center font-black text-2xl mx-auto shadow-md ring-4 ring-emerald-50">
@@ -105,6 +136,7 @@ export default function FarmerProfilePage() {
         </div>
         <h3 className="text-lg font-black text-gray-900 mt-2">{user?.name || 'Ravi Kumar'}</h3>
         <p className="text-xs font-bold text-emerald-800">+91 {user?.phone || '98765 43210'}</p>
+        <p className="text-xs font-bold text-slate-700">Customer ID: {user?.customerId || 'Not assigned'}</p>
         <p className="text-xs text-gray-500 mt-0.5">{user?.farmerProfile?.village || 'Shivapur'}</p>
       </div>
 
@@ -148,6 +180,7 @@ export default function FarmerProfilePage() {
               <span className="text-[10px] text-emerald-700 font-bold bg-emerald-50 px-1.5 py-0.5 rounded">✓ Verified</span>
             </span>
           </div>
+
         </div>
 
         <p className="text-[10px] text-slate-400">
@@ -332,6 +365,16 @@ export default function FarmerProfilePage() {
       >
         <LogOut className="w-4 h-4" />
         <span>Sign Out</span>
+      </button>
+
+      <button
+        type="button"
+        onClick={handleDeleteAccount}
+        disabled={deletingAccount}
+        className="w-full py-3.5 rounded-2xl bg-red-700 hover:bg-red-800 text-white font-bold text-xs flex items-center justify-center gap-2 border border-red-800 transition-colors disabled:opacity-60"
+      >
+        <Trash2 className="w-4 h-4" />
+        <span>{deletingAccount ? 'Deleting Account...' : 'Delete Account'}</span>
       </button>
 
       {/* Support Ticket Creation Modal */}

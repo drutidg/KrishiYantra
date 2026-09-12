@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
@@ -14,10 +14,15 @@ import {
   Tractor,
   LogOut,
 } from 'lucide-react';
-import { clearStoredUser } from '@/lib/auth';
+import { clearStoredUser, getStoredUser } from '@/lib/auth';
 
 export const StaffSidebar: React.FC = () => {
   const pathname = usePathname();
+  const [portalLabel, setPortalLabel] = useState('Staff Portal');
+
+  useEffect(() => {
+    if (getStoredUser()?.role === 'VENDOR') setPortalLabel('Vendor Portal');
+  }, []);
 
   const menu = [
     { label: 'Dashboard', href: '/staff/dashboard', icon: LayoutDashboard },
@@ -45,7 +50,7 @@ export const StaffSidebar: React.FC = () => {
           <div>
             <h1 className="text-lg font-black tracking-tight text-white">KrishiYantra</h1>
             <span className="text-[10px] font-semibold uppercase tracking-wider text-emerald-300">
-              Staff Portal • APMC
+              {portalLabel} • APMC
             </span>
           </div>
         </div>

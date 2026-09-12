@@ -1,6 +1,9 @@
 'use client';
 
 import React from 'react';
+import Link from 'next/link';
+import { MessageCircle } from 'lucide-react';
+import { usePathname } from 'next/navigation';
 import { LanguageProvider } from '@/lib/language-context';
 import { FarmerBottomNav } from '@/components/farmer/FarmerBottomNav';
 
@@ -9,6 +12,9 @@ export default function FarmerLayout({
 }: {
   children: React.ReactNode;
 }) {
+  const pathname = usePathname();
+  const isFarmerLogin = pathname === '/farmer/login';
+
   return (
     <LanguageProvider>
       {/* Outer desktop canvas: clean neutral light background */}
@@ -41,8 +47,18 @@ export default function FarmerLayout({
           {/* Main Content Area */}
           <main className="flex-1 px-4 pt-1 pb-24">{children}</main>
 
+          <Link
+            href="/krishi_mandi_mitra.html"
+            target="_blank"
+            rel="noreferrer"
+            aria-label="Open Krishi Mandi Mitra chatbot"
+            className="fixed bottom-20 right-4 z-50 flex h-12 w-12 items-center justify-center rounded-full bg-[#124734] text-white shadow-lg ring-4 ring-white hover:bg-emerald-900 sm:bottom-24 sm:right-[calc(50%_-_175px)]"
+          >
+            <MessageCircle className="h-5 w-5" />
+          </Link>
+
           {/* Mobile Bottom Navigation */}
-          <FarmerBottomNav />
+          {!isFarmerLogin && <FarmerBottomNav />}
         </div>
       </div>
     </LanguageProvider>

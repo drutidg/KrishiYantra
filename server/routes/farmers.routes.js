@@ -15,5 +15,6 @@ router.get('/:id', farmersController.getFarmerById);
 
 // Update farmer profile
 router.patch('/:id', farmersController.updateFarmer);
+router.delete('/:id', farmersController.deleteFarmer);
 
 module.exports = router;

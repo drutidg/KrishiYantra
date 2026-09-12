@@ -96,6 +96,28 @@ async function login(req, res, next) {
   }
 }
 
+async function signup(req, res) {
+  try {
+    const user = await authService.signup(req.body || {});
+    return res.status(201).json({ success: true, message: 'Account created successfully', user });
+  } catch (err) {
+    console.error('[Auth Error] signup:', err.message);
+    return res.status(err.statusCode || 400).json({ success: false, message: err.message || 'Signup failed' });
+  }
+}
+
+async function passwordLogin(req, res) {
+  try {
+    const user = req.body?.role === 'FARMER'
+      ? await authService.loginWithAadhaarPassword(req.body || {})
+      : await authService.loginWithPassword(req.body || {});
+    return res.status(200).json({ success: true, message: 'Logged in successfully', user });
+  } catch (err) {
+    console.error('[Auth Error] passwordLogin:', err.message);
+    return res.status(err.statusCode || 401).json({ success: false, message: err.message || 'Login failed' });
+  }
+}
+
 /**
  * Aadhaar-only authentication for farmer
  */
@@ -144,7 +166,7 @@ async function getCurrentUser(req, res, next) {
       });
     }
 
-    const { aadhaarHash, ...sanitizedUser } = user;
+    const { aadhaarHash, passwordHash, ...sanitizedUser } = user;
     return res.status(200).json({
       success: true,
       user: sanitizedUser,
@@ -164,6 +186,8 @@ module.exports = {
   sendOtp,
   verifyOtp,
   login,
+  signup,
+  passwordLogin,
   getCurrentUser,
 };
 

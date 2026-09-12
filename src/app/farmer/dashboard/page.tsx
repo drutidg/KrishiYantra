@@ -52,10 +52,14 @@ export default function FarmerDashboard() {
         setCenters(cData.centers);
       }
 
-      // Check booking status directly from database
-      const bRes = await fetch('/api/bookings/B-104');
+      // Load the signed-in farmer's latest active booking.
+      const storedUser = getStoredUser();
+      const bookingLookup = storedUser?.id
+        ? `/api/bookings/farmer/${storedUser.id}`
+        : '/api/bookings/B-104';
+      const bRes = await fetch(bookingLookup);
       const bData = await bRes.json();
-      const currentBooking = bData?.booking || bData?.data?.booking;
+      const currentBooking = bData?.data?.active || bData?.active || bData?.booking || bData?.data?.booking;
 
       if (currentBooking) {
         if (currentBooking.status === 'CANCELLED') {
@@ -75,7 +79,7 @@ export default function FarmerDashboard() {
             centerName: currentBooking.center?.name || 'Shivapur Procurement Center',
             address: currentBooking.center?.address || 'Shivapur Main Road, Mandya District',
             distanceKm: 3.2,
-            date: 'September 5, 2026',
+            date: currentBooking.bookingDate || currentBooking.slot?.date || 'September 5, 2026',
             time: currentBooking.slotStartTime && currentBooking.slotEndTime
               ? `${currentBooking.slotStartTime} - ${currentBooking.slotEndTime}`
               : '10:30 AM',
